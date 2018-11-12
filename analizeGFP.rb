@@ -1,5 +1,6 @@
 require 'numo/narray'
 include Numo
+require "numo/gnuplot"
 require 'csv'
 
 def load_data(path)
@@ -22,35 +23,36 @@ def arrange_datas(datas)
     gfp  = datas[0..-1, 1..-1]
     gfp -= gfp[0, 0..-1]
     gfp  = gfp.transpose(1, 0)
-    p gfp
 
     # calculateing mean & std
-    index = DFloat.new(gfp.shape[0]/3, 3).seq
     means = []
     stds  = []
-    for i in 0...index.shape[0] do
-        means << gfp[true, 3*i...3*(i+1)].mean(1)
-        stds << gfp[true, 3*i...3*(i+1)].stddev(1)
+    for i in 0...gfp.shape[0]/3 do
+        means << gfp[3*i...3*(i+1), true].mean(0)
+        stds << gfp[3*i...3*(i+1), true].stddev(0)
     end
+    return cycles, DFloat[*means], DFloat[*stds], gfp
 end
 
-arrange_datas(load_data('./gfp.csv'))
+cycles, means, stds, gfp = arrange_datas(load_data('./gfp.csv'))
 
-exit!
+Label = ("0"..."6").to_a
 
-z = DFloat[*datas]
-cycles = z[0..-1, 0]
-gfp    = z[0..-1, 1..-1]
-gfp   -= gfp[0, 0..-1]
-gfp    = gfp.transpose(1, 0)
+dataset = []
+for i in 0...means.shape[0] do
+    dataset << [cycles, means[i, true], w:"linespoints", pt: 6, lw: 2, t:Label[i]]
+end
 
-index = [] << [0, 0..-1] 
-p index
-p gfp[0...3, 0..-1].mean(0)
+Numo.gnuplot do
+  set title: "X-Y data plot"
 
-means = gfp
+  set xlabel: "Cycle [10 min/cycle]"
+  set xrange: 1..25
 
-index = DFloat.new(18).seq().reshape(6, 3)
+  set ylabel: "GFP Fluorescence Intensity [a.u.]"
+
+  plot *dataset
+end
 
 
 
